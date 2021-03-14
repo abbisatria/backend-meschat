@@ -14,7 +14,8 @@ exports.signUp = async (req, res) => {
       const createUser = await userModel.createUser({ phoneNumber, password: encryptedPassword })
       if (createUser.insertId > 0) {
         const user = await userModel.getUsersByCondition({ id: createUser.insertId })
-        const token = jwt.sign({ id: user.id, username: user.username, phoneNumber: user.phoneNumber, picture: user.picture }, APP_KEY)
+        console.log(user)
+        const token = jwt.sign({ id: user[0].id, username: user[0].username, phoneNumber: user[0].phoneNumber, picture: user[0].picture }, APP_KEY)
         const results = {
           token
         }
@@ -23,7 +24,21 @@ exports.signUp = async (req, res) => {
         return response(res, 400, false, 'Register Failed')
       }
     } else {
-      return response(res, 400, 'Register Failed, phone number already exists')
+      return response(res, 400, false, 'Register Failed, phone number already exists')
+    }
+  } catch (error) {
+    return response(res, 400, false, 'Bad Request')
+  }
+}
+
+exports.checkUser = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body
+    const isExists = await userModel.getUsersByCondition({ phoneNumber })
+    if (isExists.length < 1) {
+      return response(res, 200, true, 'Phone numbe can be used')
+    } else {
+      return response(res, 400, false, 'Phone number already exists')
     }
   } catch (error) {
     return response(res, 400, false, 'Bad Request')
@@ -42,9 +57,9 @@ exports.signIn = async (req, res) => {
         const results = {
           token
         }
-        return response(res, 200, 'Sign In succesfully', results)
+        return response(res, 200, true, 'Sign In succesfully', results)
       } else {
-        return response(res, 401, 'Wrong password')
+        return response(res, 401, false, 'Wrong password')
       }
     }
     return response(res, 401, false, 'Phone Number not registered')

@@ -2,6 +2,21 @@ const userModel = require('../models/users')
 const response = require('../helpers/response')
 const bcrypt = require('bcrypt')
 const fs = require('fs')
+const qs = require('querystring')
+const { APP_URL } = process.env
+
+exports.detailUser = async (req, res) => {
+  try {
+    const { id } = req.params
+    const results = await userModel.getUsersByCondition({ id })
+    if (results.length > 0) {
+      return response(res, 200, true, `Details ${results[0].username}`, results)
+    }
+    return response(res, 404, 'Cant Found Detail User')
+  } catch (error) {
+    return response(res, 400, 'Bad Request')
+  }
+}
 
 exports.updateUser = async (req, res) => {
   try {
@@ -27,7 +42,7 @@ exports.updateUser = async (req, res) => {
         }
         return response(res, 400, false, 'Cant update username')
       } else {
-        return response(res, 400, 'Update Failed, username already exists')
+        return response(res, 400, false, 'Update Failed, username already exists')
       }
     }
 
@@ -49,7 +64,7 @@ exports.updateUser = async (req, res) => {
         }
         return response(res, 400, false, 'Cant update phone number')
       } else {
-        return response(res, 400, 'Update Failed, phone number already exists')
+        return response(res, 400, false, 'Update Failed, phone number already exists')
       }
     }
 
@@ -79,13 +94,49 @@ exports.deletePicture = async (req, res) => {
       fs.unlinkSync(`upload/profile/${initialResults[0].picture}`)
       return response(res, 200, true, 'Image hash ben deleted', {
         id: initialResults[0].id,
-        image: null
+        picture: null
       })
     } else {
       return response(res, 400, false, 'Failed to delete image')
     }
   } catch (error) {
     console.log(error)
+    return response(res, 400, false, 'Bad Request')
+  }
+}
+
+exports.getContact = async (req, res) => {
+  try {
+    const { id } = req.userData
+    const cond = req.query
+    cond.search = cond.search || ''
+    cond.page = Number(cond.page) || 1
+    cond.limit = Number(cond.limit) || 5
+    cond.offset = (cond.page - 1) * cond.limit
+    cond.sort = cond.sort || 'id'
+    cond.order = cond.order || 'ASC'
+
+    const results = await userModel.getAllContactByCondition(id, cond)
+
+    const totalData = await userModel.getCountContact(id, cond)
+    const totalPage = Math.ceil(Number(totalData[0].totalData) / cond.limit)
+
+    return response(
+      res,
+      200,
+      true,
+      'List of all Contact',
+      results,
+      {
+        totalData: totalData[0].totalData,
+        currentPage: cond.page,
+        totalPage,
+        nextLink: cond.page < totalPage ? `${APP_URL}/user/contact?${qs.stringify({ ...req.query, ...{ page: cond.page + 1 } })}` : null,
+        prevLink: cond.page > 1 ? `${APP_URL}/user/contact?${qs.stringify({ ...req.query, ...{ page: cond.page - 1 } })}` : null
+      }
+    )
+  } catch (err) {
+    console.log(err)
     return response(res, 400, false, 'Bad Request')
   }
 }
