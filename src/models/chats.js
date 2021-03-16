@@ -15,6 +15,20 @@ exports.createChat = (data) => {
   })
 }
 
+exports.updateLatestMsg = (id, idReceiver) => {
+  return new Promise((resolve, reject) => {
+    const query = db.query(`
+      UPDATE chats
+      SET isLatest = 'false'
+      WHERE ((idSender=${id} AND idReceiver=${idReceiver}) OR (idSender=${idReceiver} AND idReceiver=${id}))
+    `, (err, res, field) => {
+      if (err) reject(err)
+      resolve(res)
+    })
+    console.log(query.sql)
+  })
+}
+
 exports.getHistoryChat = (id, idReceiver, cond) => {
   return new Promise((resolve, reject) => {
     const query = db.query(`
@@ -31,21 +45,23 @@ exports.getHistoryChat = (id, idReceiver, cond) => {
   })
 }
 
-// exports.getListHistoryChat = (id, cond) => {
-//   return new Promise((resolve, reject) => {
-//     const query = db.query(`
-//     SELECT c.*, u.username, u.picture FROM chats c
-//     INNER JOIN users u on u.id = c.idSender
-//     WHERE (c.idReceiver=${id} OR c.idSender=${id}) AND c.id IN (SELECT MAX(id) AS id FROM chats GROUP BY idSender, idReceiver) AND u.username LIKE "%${cond.search}%"
-//     ORDER BY c.${cond.sort} ${cond.order}
-//     LIMIT ${cond.limit} OFFSET ${cond.offset}
-//     `, (err, res, field) => {
-//       if (err) reject(err)
-//       resolve(res)
-//     })
-//     console.log(query.sql)
-//   })
-// }
+exports.getListHistoryChat = (id, cond) => {
+  return new Promise((resolve, reject) => {
+    const query = db.query(`
+    SELECT c.id, c.idReceiver, c.idSender, s.username AS senderUsername, s.phoneNumber AS senderPhoneNumber, s.picture AS senderPicture, r.username AS receiverUsername, r.phoneNumber AS receiverPhoneNumber, r.picture AS receiverPicture, c.message, c.createdAt
+    FROM chats c
+    INNER JOIN users s ON s.id = c.idSender
+    INNER JOIN users r ON r.id = c.idReceiver
+    WHERE (c.idSender=${id} OR c.idReceiver=${id}) AND c.isLatest = 'true' AND c.message LIKE "%${cond.search}%"
+    ORDER BY c.${cond.sort} ${cond.order}
+    LIMIT ${cond.limit} OFFSET ${cond.offset}
+    `, (err, res, field) => {
+      if (err) reject(err)
+      resolve(res)
+    })
+    console.log(query.sql)
+  })
+}
 
 exports.getCountHistoryChat = (id, idReceiver, cond) => {
   return new Promise((resolve, reject) => {
@@ -62,20 +78,22 @@ exports.getCountHistoryChat = (id, idReceiver, cond) => {
   })
 }
 
-// exports.getCountListHistoryChat = (id, cond) => {
-//   return new Promise((resolve, reject) => {
-//     const query = db.query(`
-//     SELECT COUNT(c.id) as totalData FROM chats c
-//     INNER JOIN users u on u.id = c.idSender
-//     WHERE (c.idReceiver=${id} OR c.idSender=${id}) AND c.id IN (SELECT MAX(id) AS id FROM chats GROUP BY idSender) AND u.username LIKE "%${cond.search}%"
-//     ORDER BY c.${cond.sort} ${cond.order}
-//     `, (err, res, field) => {
-//       if (err) reject(err)
-//       resolve(res)
-//     })
-//     console.log(query.sql)
-//   })
-// }
+exports.getCountListHistoryChat = (id, cond) => {
+  return new Promise((resolve, reject) => {
+    const query = db.query(`
+    SELECT COUNT(c.id) as totalData
+    FROM chats c
+    INNER JOIN users s ON s.id = c.idSender
+    INNER JOIN users r ON r.id = c.idReceiver
+    WHERE (c.idSender=${id} OR c.idReceiver=${id}) AND c.isLatest = 'true'
+    ORDER BY c.${cond.sort} ${cond.order}
+    `, (err, res, field) => {
+      if (err) reject(err)
+      resolve(res)
+    })
+    console.log(query.sql)
+  })
+}
 
 exports.getLastMsg = (id, idReceiver) => {
   return new Promise((resolve, reject) => {

@@ -72,7 +72,7 @@ exports.updateUser = async (req, res) => {
       const picture = req.file.filename
       const uploadImage = await userModel.updateUser(id, { picture })
       if (uploadImage.affectedRows > 0) {
-        if (initialResults[0].picture !== null) {
+        if (initialResults[0].picture !== null && initialResults[0].picture !== 'null') {
           fs.unlinkSync(`upload/profile/${initialResults[0].picture}`)
         }
         return response(res, 200, true, 'Image hash been Updated', { id, picture })
@@ -90,12 +90,17 @@ exports.deletePicture = async (req, res) => {
     const { id } = req.params
     const initialResults = await userModel.getUsersByCondition({ id })
     if (initialResults.length > 0) {
-      await userModel.updateUser(id, { picture: null })
-      fs.unlinkSync(`upload/profile/${initialResults[0].picture}`)
-      return response(res, 200, true, 'Image hash ben deleted', {
-        id: initialResults[0].id,
-        picture: null
-      })
+      console.log(initialResults[0].picture !== null && initialResults[0].picture !== 'null')
+      if (initialResults[0].picture !== null && initialResults[0].picture !== 'null') {
+        await userModel.updateUser(id, { picture: null })
+        fs.unlinkSync(`upload/profile/${initialResults[0].picture}`)
+        return response(res, 200, true, 'Image hash ben deleted', {
+          id: initialResults[0].id,
+          picture: null
+        })
+      } else {
+        return response(res, 400, false, 'Failed to delete the image, the image is still blank')
+      }
     } else {
       return response(res, 400, false, 'Failed to delete image')
     }
